@@ -16,7 +16,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)updateWithHistoryKey:(NSString *)historyKey;
 - (void)updateWithStorageError:(NSError *)error;
-- (void)updateWithAuthorizationRequiredActionHandler:(void (^)(void))actionHandler;
 
 @end
 

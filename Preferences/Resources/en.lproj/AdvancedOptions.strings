@@ -5,7 +5,6 @@
 "Always Scroll to Top" = "Always Scroll to Top";
 "Are you sure you want to clear all favorite items? This action cannot be undone." = "Are you sure you want to clear all favorite items? This action cannot be undone.";
 "Are you sure you want to clear all history items? This action cannot be undone." = "Are you sure you want to clear all history items? This action cannot be undone.";
-"Are you sure you want to deactivate Kayoko on this device? This removes Kayoko’s mirrored Havoc credentials and local authorization state." = "Are you sure you want to deactivate Kayoko on this device? This removes Kayoko’s mirrored Havoc credentials and local authorization state.";
 "Are you sure you want to reset the thumbnail cache? Thumbnails will be regenerated as needed." = "Are you sure you want to reset the thumbnail cache? Thumbnails will be regenerated as needed.";
 "Are you sure you want to reset your preferences?" = "Are you sure you want to reset your preferences?";
 "Are you sure you want to restore the default tags? Existing tags will be replaced. This action cannot be undone." = "Are you sure you want to restore the default tags? Existing tags will be replaced. This action cannot be undone.";
@@ -20,7 +19,6 @@
 "Copy Path" = "Copy Path";
 "Dangerous Zone" = "Dangerous Zone";
 "Data Unavailable" = "Data Unavailable";
-"Deactivate" = "Deactivate";
 "Gesture Recognizer" = "Gesture Recognizer";
 "History Only" = "History Only";
 "Ignore Universal Clipboard" = "Ignore Universal Clipboard";
@@ -49,7 +47,6 @@
 "The %@ data directory could not be found or read." = "The %@ data directory could not be found or read.";
 "The CopyVault data directory could not be found or read." = "The CopyVault data directory could not be found or read.";
 "The import could not be completed." = "The import could not be completed.";
-"Unable to Deactivate" = "Unable to Deactivate";
 "Unable to Import" = "Unable to Import";
 "Unable to Open Filza" = "Unable to Open Filza";
 "Unable to Restore Tags" = "Unable to Restore Tags";

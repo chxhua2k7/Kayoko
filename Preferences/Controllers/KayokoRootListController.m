@@ -8,32 +8,16 @@
 #import "KayokoRootListController.h"
 #import "KayokoNotificationKeys.h"
 #import "KayokoPreferenceKeys.h"
-#import "KayokoPurchaseAuthorization.h"
 #import "KayokoRespringControllerSupport.h"
-#import "KayokoStatusOverlayView.h"
 
 #import <Preferences/PSSpecifier.h>
 #import <UIKit/UIKit.h>
-#import <roothide.h>
 
 @interface NSConcreteNotification : NSNotification
 @end
 
 @interface PSListController (Private)
 - (void)_returnKeyPressed:(NSConcreteNotification *)notification;
-@end
-
-@interface LSApplicationProxy : NSObject
-+ (instancetype)applicationProxyForIdentifier:(NSString *)identifier;
-@end
-
-@interface NSTask : NSObject
-- (void)setLaunchPath:(NSString *)launchPath;
-- (void)setArguments:(NSArray<NSString *> *)arguments;
-- (void)setStandardOutput:(id)standardOutput;
-- (void)setStandardError:(id)standardError;
-- (void)launch;
-- (void)waitUntilExit;
 @end
 
 NS_ASSUME_NONNULL_BEGIN
@@ -44,18 +28,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 NS_ASSUME_NONNULL_END
 
-static NSString *const kKayokoSileoStoreBundleIdentifier = @"org.coolstar.SileoStore";
-static NSString *const kKayokoSileoBundleIdentifier = @"org.coolstar.Sileo";
-static NSString *const kKayokoZebraBundleIdentifier = @"com.getzbra.zebra2";
-static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
-
 @implementation KayokoRootListController {
     ActivationMethod _lastActivationMethod;
     BOOL _hasActivationMethodSnapshot;
     UISearchController *_testInputSearchController;
-    KayokoStatusOverlayView *_authorizationOverlayView;
-    BOOL _authorizationCheckInProgress;
-    NSUInteger _authorizationCheckGeneration;
     BOOL _externalImportRestartReminderPending;
     BOOL _externalImportRestartReminderSucceeded;
     NSString *_externalImportRestartReminderSource;
@@ -78,10 +54,6 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
     [[self navigationItem] setLargeTitleDisplayMode:UINavigationItemLargeTitleDisplayModeNever];
     [[self navigationItem] setRightBarButtonItem:respringButton];
 
-    [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(applicationWillEnterForeground:)
-                                                 name:UIApplicationWillEnterForegroundNotification
-                                               object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(externalImportRequiresRestart:)
                                                  name:kKayokoNotificationKeyExternalImportRequiresRestart
@@ -170,7 +142,6 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
     if (![transitionCoordinator isInteractive]) {
         [[self navigationController] setToolbarHidden:YES animated:animated];
     }
-    [self beginAuthorizationCheckIfNeededRestartingExistingOverlay:NO];
 
     ActivationMethod currentActivationMethod = [self currentActivationMethod];
     if (!_hasActivationMethodSnapshot) {
@@ -302,246 +273,6 @@ static NSString *const kKayokoLegacyZebraBundleIdentifier = @"xyz.willy.Zebra";
 - (void)showKayoko {
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
                                          (CFStringRef)kKayokoNotificationKeyCoreShow, nil, nil, YES);
-}
-
-- (void)applicationWillEnterForeground:(NSNotification *)notification {
-    (void)notification;
-    if ([self isViewLoaded] && self.view.window) {
-        [self beginAuthorizationCheckIfNeededRestartingExistingOverlay:YES];
-    }
-}
-
-#pragma mark - Authorization Overlay
-
-- (void)beginAuthorizationCheckIfNeededRestartingExistingOverlay:(BOOL)restartExistingOverlay {
-    if (_authorizationCheckInProgress) {
-        return;
-    }
-
-    NSError *flagError = nil;
-    if ([KayokoPurchaseAuthorization hasAuthorizationPassFlagWithError:&flagError]) {
-        [self dismissAuthorizationOverlayAnimated:NO];
-        return;
-    }
-
-    if (_authorizationOverlayView && !restartExistingOverlay) {
-        return;
-    }
-
-    _authorizationCheckInProgress = YES;
-    NSUInteger generation = ++_authorizationCheckGeneration;
-    [self showAuthorizationOverlayChecking];
-
-    NSString *updaterPath = [self kayokoUpdaterPath];
-    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
-      [self runCredentialSyncTaskAtPath:updaterPath];
-      [self checkMirroredPurchaseForGeneration:generation];
-    });
-}
-
-- (void)showAuthorizationOverlayChecking {
-    KayokoStatusOverlayView *overlayView = [self authorizationOverlayView];
-    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
-    [overlayView setLoadingTitle:[bundle localizedStringForKey:@"Check Product Authorization" value:nil table:@"Root"]
-                        subtitle:nil];
-    [overlayView animateAppearance];
-}
-
-- (KayokoStatusOverlayView *)authorizationOverlayView {
-    if (!_authorizationOverlayView) {
-        _authorizationOverlayView = [[KayokoStatusOverlayView alloc] initWithFrame:CGRectZero];
-        _authorizationOverlayView.translatesAutoresizingMaskIntoConstraints = NO;
-        __weak typeof(self) weakSelf = self;
-        _authorizationOverlayView.tapHandler = ^{
-          [weakSelf retryAuthorizationCheck];
-        };
-    }
-
-    if (!_authorizationOverlayView.superview) {
-        _authorizationOverlayView.alpha = 0.0;
-        [self.view addSubview:_authorizationOverlayView];
-        [NSLayoutConstraint activateConstraints:@[
-            [_authorizationOverlayView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
-            [_authorizationOverlayView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-            [_authorizationOverlayView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-            [_authorizationOverlayView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
-        ]];
-    }
-    return _authorizationOverlayView;
-}
-
-- (void)retryAuthorizationCheck {
-    [self beginAuthorizationCheckIfNeededRestartingExistingOverlay:YES];
-}
-
-- (void)checkMirroredPurchaseForGeneration:(NSUInteger)generation {
-    [KayokoPurchaseAuthorization checkMirroredPurchaseWithCompletion:^(KayokoPurchaseAuthorizationResult *result) {
-      dispatch_async(dispatch_get_main_queue(), ^{
-        if (generation != self->_authorizationCheckGeneration) {
-            return;
-        }
-        [self handleAuthorizationResult:result];
-      });
-    }];
-}
-
-- (void)handleAuthorizationResult:(KayokoPurchaseAuthorizationResult *)result {
-    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
-    _authorizationCheckInProgress = NO;
-    BOOL useZebraInstructions = [self shouldUseZebraAuthorizationInstructions];
-
-    switch (result.state) {
-    case KayokoPurchaseAuthorizationStatePurchased: {
-        NSError *error = nil;
-        [KayokoPurchaseAuthorization setAuthorizationPassFlagWithError:&error];
-        [self dismissAuthorizationOverlayAnimated:YES];
-        break;
-    }
-    case KayokoPurchaseAuthorizationStateMissingCredential: {
-        NSString *subtitleKey = useZebraInstructions
-                                    ? @"Please check the following: open Zebra → select the Sources tab → tap Havoc → "
-                                      @"make sure it is signed in"
-                                    : @"Please check the following: open Sileo → tap the avatar in the top-right "
-                                      @"corner → make sure the Havoc payment provider is signed in";
-        [[self authorizationOverlayView]
-            setFailureTitle:[bundle localizedStringForKey:@"Read Account Failed" value:nil table:@"Root"]
-                   subtitle:[bundle localizedStringForKey:subtitleKey value:nil table:@"Root"]
-              actionEnabled:NO];
-        break;
-    }
-    case KayokoPurchaseAuthorizationStateNetworkFailed: {
-        NSString *subtitle = [result.error localizedDescription]
-                                 ?: [bundle localizedStringForKey:@"The network request failed."
-                                                            value:nil
-                                                            table:@"Root"];
-        [[self authorizationOverlayView] setFailureTitle:[bundle localizedStringForKey:@"Network Request Failed"
-                                                                                 value:nil
-                                                                                 table:@"Root"]
-                                                subtitle:subtitle
-                                           actionEnabled:YES];
-        break;
-    }
-    case KayokoPurchaseAuthorizationStateInvalidResponse: {
-        NSString *statusMessage =
-            result.statusMessage ?: [bundle localizedStringForKey:@"Invalid Response" value:nil table:@"Root"];
-        NSString *format = [bundle localizedStringForKey:@"Server returned an invalid response. Tap the screen to "
-                                                         @"retry: %@"
-                                                   value:nil
-                                                   table:@"Root"];
-        [[self authorizationOverlayView] setFailureTitle:[bundle localizedStringForKey:@"Network Request Failed"
-                                                                                 value:nil
-                                                                                 table:@"Root"]
-                                                subtitle:[NSString stringWithFormat:format, statusMessage]
-                                           actionEnabled:YES];
-        break;
-    }
-    case KayokoPurchaseAuthorizationStateNotPurchased: {
-        NSString *subtitleKey = useZebraInstructions
-                                    ? @"Please check the following: open Zebra → select the Sources tab → tap Havoc → "
-                                      @"tap My Account in the top-right corner → make sure Kayoko is in your purchases"
-                                    : @"Please check the following: open Sileo → tap the avatar in the top-right "
-                                      @"corner → tap Havoc → make sure Kayoko is in your purchases";
-        [[self authorizationOverlayView]
-            setFailureTitle:[bundle localizedStringForKey:@"Authorization Not Found" value:nil table:@"Root"]
-                   subtitle:[bundle localizedStringForKey:subtitleKey value:nil table:@"Root"]
-              actionEnabled:NO];
-        break;
-    }
-    }
-}
-
-- (BOOL)shouldUseZebraAuthorizationInstructions {
-    BOOL hasSileo = [self isApplicationInstalledWithBundleIdentifiers:@[
-        kKayokoSileoStoreBundleIdentifier, kKayokoSileoBundleIdentifier
-    ]];
-    if (hasSileo) {
-        return NO;
-    }
-
-    return [self isApplicationInstalledWithBundleIdentifiers:@[
-        kKayokoZebraBundleIdentifier, kKayokoLegacyZebraBundleIdentifier
-    ]];
-}
-
-- (BOOL)isApplicationInstalledWithBundleIdentifiers:(NSArray<NSString *> *)bundleIdentifiers {
-    Class proxyClass = NSClassFromString(@"LSApplicationProxy");
-    if (![proxyClass respondsToSelector:@selector(applicationProxyForIdentifier:)]) {
-        return NO;
-    }
-    typedef LSApplicationProxy *(*KayokoApplicationProxyForIdentifierIMP)(Class, SEL, NSString *);
-    KayokoApplicationProxyForIdentifierIMP proxyForIdentifier = (KayokoApplicationProxyForIdentifierIMP)
-        [proxyClass methodForSelector:@selector(applicationProxyForIdentifier:)];
-    if (!proxyForIdentifier) {
-        return NO;
-    }
-
-    for (NSString *bundleIdentifier in bundleIdentifiers) {
-        if ([bundleIdentifier length] == 0) {
-            continue;
-        }
-
-        LSApplicationProxy *proxy =
-            proxyForIdentifier(proxyClass, @selector(applicationProxyForIdentifier:), bundleIdentifier);
-        if (proxy) {
-            return YES;
-        }
-    }
-    return NO;
-}
-
-- (void)dismissAuthorizationOverlayAnimated:(BOOL)animated {
-    KayokoStatusOverlayView *overlayView = _authorizationOverlayView;
-    if (!overlayView) {
-        return;
-    }
-
-    void (^completion)(void) = ^{
-      [overlayView removeFromSuperview];
-      if (self->_authorizationOverlayView == overlayView) {
-          self->_authorizationOverlayView = nil;
-      }
-    };
-
-    if (animated) {
-        [overlayView animateDisappearanceWithCompletion:completion];
-    } else {
-        completion();
-    }
-}
-
-#pragma mark - Credential Sync
-
-- (NSString *)kayokoUpdaterPath {
-    NSFileManager *fileManager = [NSFileManager defaultManager];
-    NSArray<NSString *> *candidatePaths = @[
-        jbroot(@"/usr/local/libexec/kayoko_updater"), @"/var/jb/usr/local/libexec/kayoko_updater",
-        @"/usr/local/libexec/kayoko_updater"
-    ];
-
-    for (NSString *path in candidatePaths) {
-        if ([fileManager isExecutableFileAtPath:path]) {
-            return path;
-        }
-    }
-    return nil;
-}
-
-- (void)runCredentialSyncTaskAtPath:(NSString *)updaterPath {
-    if ([updaterPath length] == 0) {
-        return;
-    }
-
-    @try {
-        NSTask *task = [[NSTask alloc] init];
-        [task setLaunchPath:updaterPath];
-        [task setArguments:@[ @"sync-credential" ]];
-        [task setStandardOutput:[NSPipe pipe]];
-        [task setStandardError:[NSPipe pipe]];
-        [task launch];
-        [task waitUntilExit];
-    } @catch (NSException *exception) {
-        (void)exception;
-    }
 }
 
 #pragma mark - Cell Helpers

@@ -123,18 +123,6 @@ NS_ASSUME_NONNULL_END
     [[self messageLabel] setText:[NSString stringWithFormat:format, title, detail ?: @""]];
 }
 
-- (void)updateWithAuthorizationRequiredActionHandler:(void (^)(void))actionHandler {
-    NSBundle *bundle = [KayokoPasteboardManager localizationBundle];
-    [self setName:[bundle localizedStringForKey:@"Kayoko" value:nil table:@"Tweak"]];
-    [[self messageLabel] setText:[bundle localizedStringForKey:@"Open Settings → “Kayoko” to complete verification."
-                                                         value:nil
-                                                         table:@"Tweak"]];
-    [[self actionButton] setTitle:[bundle localizedStringForKey:@"Continue" value:nil table:@"Tweak"]
-                         forState:UIControlStateNormal];
-    [self setActionHandler:actionHandler];
-    [[self actionButtonStackView] setHidden:NO];
-}
-
 - (void)handleActionButtonPressed {
     if ([self actionHandler]) {
         [self actionHandler]();

@@ -194,16 +194,6 @@
 			<key>isDestructive</key>
 			<true/>
 		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSButtonCell</string>
-			<key>label</key>
-			<string>Deactivate</string>
-			<key>action</key>
-			<string>deactivateAuthorizationPrompt</string>
-			<key>isDestructive</key>
-			<true/>
-		</dict>
 
 		<dict>
 			<key>cell</key>

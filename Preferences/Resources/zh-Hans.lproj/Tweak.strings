@@ -18,7 +18,6 @@
 "Clear" = "清空";
 "Clear Favorites Confirmation" = "要清空所有收藏内容吗？此操作不可撤销。";
 "Clear History Confirmation" = "要清空历史记录吗？此操作不可撤销。";
-"Continue" = "继续";
 "Continuity" = "连续互通";
 "Copy" = "拷贝";
 "CopyLog data directory was not found." = "找不到 CopyLog 数据目录。";
@@ -49,7 +48,6 @@
 "No Tag" = "无标签";
 "Note" = "备注";
 "Open" = "打开";
-"Open Settings → “Kayoko” to complete verification." = "打开设置 → “Kayoko” 以完成验证。";
 "Paste" = "粘贴";
 "Phone Numbers" = "电话号码";
 "Preview" = "预览";

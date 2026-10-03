@@ -18,7 +18,6 @@
 "Clear" = "Clear";
 "Clear Favorites Confirmation" = "Clear favorites? This action cannot be undone.";
 "Clear History Confirmation" = "Clear history? This action cannot be undone.";
-"Continue" = "Continue";
 "Continuity" = "Continuity";
 "Copy" = "Copy";
 "CopyLog data directory was not found." = "CopyLog data directory was not found.";
@@ -49,7 +48,6 @@
 "No Tag" = "No Tag";
 "Note" = "Note";
 "Open" = "Open";
-"Open Settings → “Kayoko” to complete verification." = "Open Settings → “Kayoko” to complete verification.";
 "Paste" = "Paste";
 "Phone Numbers" = "Phone Numbers";
 "Preview" = "Preview";

@@ -4,20 +4,8 @@
 //
 
 #import "KayokoPostinstallUpdater.h"
-#import "KayokoPurchaseAuthorization.h"
 
 #import <Foundation/Foundation.h>
-
-#if defined(DEBUG) || defined(__DEBUG__)
-static void logSyncedCredentialSource(NSString *source) {
-    NSString *displaySource = [source length] > 0 ? [source capitalizedString] : @"Unknown";
-    fprintf(stderr, "Kayoko: Synced Havoc credential from %s.\n", [displaySource UTF8String]);
-}
-#endif
-
-static BOOL syncCredentialWithSource(NSString **source, NSError **error) {
-    return [KayokoPurchaseAuthorization mirrorHavocCredentialToAppleAccessGroupWithSource:source error:error];
-}
 
 static NSString *externalImportErrorDescription(NSError *error, NSString *fallback) {
     if ([[error domain] isEqualToString:@"com.82flex.kayoko.history-store"] &&
@@ -25,20 +13,6 @@ static NSString *externalImportErrorDescription(NSError *error, NSString *fallba
         return [error localizedFailureReason];
     }
     return [error localizedDescription] ?: fallback;
-}
-
-static void syncCredentialBestEffort(void) {
-    NSError *syncError = nil;
-    NSString *source = nil;
-    if (!syncCredentialWithSource(&source, &syncError)) {
-        fprintf(stderr, "Kayoko: Unable to sync Havoc credential: %s\n",
-                [[[syncError localizedDescription] description] UTF8String]);
-    }
-#if defined(DEBUG) || defined(__DEBUG__)
-    else {
-        logSyncedCredentialSource(source);
-    }
-#endif
 }
 
 static int runPostinstall(void) {
@@ -62,7 +36,6 @@ static int runPostinstall(void) {
             fprintf(stderr, "Kayoko: Unable to inspect legacy cleanup paths: %s\n",
                     [[[error localizedDescription] description] UTF8String]);
         }
-        syncCredentialBestEffort();
 
         error = nil;
         if (![updater resetThumbnailCacheWithError:&error]) {
@@ -116,36 +89,17 @@ static int runCopyLogImport(void) {
     }
 }
 
-static int runSyncCredential(void) {
-    @autoreleasepool {
-        NSError *error = nil;
-        NSString *source = nil;
-        if (!syncCredentialWithSource(&source, &error)) {
-            fprintf(stderr, "Kayoko: Command sync-credential failed: %s\n",
-                    [[[error localizedDescription] description] UTF8String]);
-            return 1;
-        }
-#if defined(DEBUG) || defined(__DEBUG__)
-        logSyncedCredentialSource(source);
-#endif
-        return 0;
-    }
-}
-
 int main(int argc, char *argv[]) {
     @autoreleasepool {
         if (argc < 2) {
             fprintf(stderr, "usage: kayoko_updater "
-                            "postinst|import-copylog|import-copyvault|reset-thumbnail-cache|sync-credential\n");
+                            "postinst|import-copylog|import-copyvault|reset-thumbnail-cache\n");
             return 64;
         }
 
         NSString *command = [NSString stringWithUTF8String:argv[1]];
         if ([command isEqualToString:@"postinst"]) {
             return runPostinstall();
-        }
-        if ([command isEqualToString:@"sync-credential"]) {
-            return runSyncCredential();
         }
         if ([command isEqualToString:@"import-copyvault"]) {
             return runCopyVaultImport();

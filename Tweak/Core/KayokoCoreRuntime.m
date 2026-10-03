@@ -10,7 +10,6 @@
 #import "KayokoPanelPresentationMode.h"
 #import "KayokoPasteboardManager.h"
 #import "KayokoPreferenceKeys.h"
-#import "KayokoPurchaseAuthorization.h"
 
 #import <AVFoundation/AVFoundation.h>
 #import <AudioToolbox/AudioToolbox.h>
@@ -183,7 +182,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) KayokoPanelPresentationMode activePresentationMode;
 @property(nonatomic, assign) BOOL pendingHeightPreferenceApply;
 @property(nonatomic, assign) BOOL didRequestInitialHistoryPreload;
-@property(nonatomic, assign, getter=hasAuthorizationPassInMemory) BOOL authorizationPassInMemory;
 
 #pragma mark - Preferences
 
@@ -885,22 +883,6 @@ NS_ASSUME_NONNULL_END
                                                          : KayokoPanelPresentationModePortraitDrawer;
 }
 
-- (BOOL)authorizationPassedForPanelShow {
-    if ([self hasAuthorizationPassInMemory]) {
-        return YES;
-    }
-
-    NSError *authorizationError = nil;
-    BOOL authorizationPassed = [KayokoPurchaseAuthorization hasAuthorizationPassFlagWithError:&authorizationError];
-    if (authorizationError) {
-        HBLogDebug(@"Kayoko: Authorization pass flag check failed: %@", authorizationError);
-    }
-    if (authorizationPassed) {
-        [self setAuthorizationPassInMemory:YES];
-    }
-    return authorizationPassed;
-}
-
 - (void)startLockStateObserver {
     if (self.lockStateToken != 0) {
         return;
@@ -1047,8 +1029,6 @@ NS_ASSUME_NONNULL_END
         [self playFailureHapticFeedbackIfNeeded];
         return;
     }
-
-    [self.mainViewController setAuthorizationPassed:[self authorizationPassedForPanelShow]];
 
     [self applyHeightPreferenceToViewApplyingWhenHidden:YES];
     [self.mainViewController applyUserInterfaceStyle:UIUserInterfaceStyleUnspecified];
